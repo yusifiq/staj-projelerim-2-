@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staj Projesi - Tarayıcı Tabanlı Not Defteri</title>
+    <!-- Şık arayüz için Tailwind CSS -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- İkonlar için FontAwesome -->
+    <link rel="stylesheet" href="https://cloudflare.com">
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Başlık -->
+        <header class="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm">
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fa-solid fa-note-sticky text-yellow-500"></i> Not Defterim
+            </h1>
+            <span id="noteCount" class="bg-gray-200 text-gray-700 text-sm font-semibold px-3 py-1 rounded-full">0 Not</span>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Sol Taraf: Not Ekleme Formu -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm h-fit">
+                <h2 class="text-lg font-semibold text-gray-700 mb-4">Yeni Not Ekle</h2>
+                <div class="space-y-4">
+                    <input type="text" id="noteTitle" placeholder="Not Başlığı..." 
+                        class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                    
+                    <textarea id="noteContent" rows="4" placeholder="Not içeriğini buraya yazın..." 
+                        class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"></textarea>
+                    
+                    <button id="addNoteBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2.5 rounded-xl transition-all cursor-pointer shadow-sm">
+                        <i class="fa-solid fa-plus mr-1"></i> Notu Kaydet
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sağ Taraf: Not Listesi -->
+            <div class="md:col-span-2">
+                <div id="notesContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Dinamik notlar buraya gelecek -->
+                </div>
+                <!-- Boş Durum Uyarısı -->
+                <div id="emptyState" class="hidden text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-300">
+                    <i class="fa-regular fa-folder-open text-4xl text-gray-400 mb-2"></i>
+                    <p class="text-gray-500 text-sm">Henüz eklenmiş bir notunuz yok.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Mantığı -->
+    <script>
+        const noteTitle = document.getElementById('noteTitle');
+        const noteContent = document.getElementById('noteContent');
+        const addNoteBtn = document.getElementById('addNoteBtn');
+        const notesContainer = document.getElementById('notesContainer');
+        const emptyState = document.getElementById('emptyState');
+        const noteCount = document.getElementById('noteCount');
+
+        // Sayfa ilk açıldığında LocalStorage'dan mevcut notları yükle (Eğer yoksa boş array ata)
+        let notes = JSON.parse(localStorage.getItem('staj_notlari')) || [];
+
+        // Notları Ekrana Basan Fonksiyon
+        function renderNotes() {
+            notesContainer.innerHTML = '';
+            
+            if (notes.length === 0) {
+                emptyState.classList.remove('hidden');
+                noteCount.textContent = "0 Not";
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            noteCount.textContent = `${notes.length} Not`;
+
+            notes.forEach((note, index) => {
+                const noteCard = document.createElement('div');
+                noteCard.className = 'bg-yellow-50 p-5 rounded-2xl border border-yellow-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all relative group';
+                noteCard.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base mb-2 break-words">${note.title || 'Başlıksız Not'}</h3>
+                        <p class="text-gray-600 text-sm whitespace-pre-line mb-4 break-words">${note.content}</p>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t border-yellow-200/60 pt-3">
+                        <span>${note.date}</span>
+                        <button onclick="deleteNote(${index})" class="text-red-500 hover:text-red-700 p-1 cursor-pointer transition-colors" title="Notu Sil">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                notesContainer.appendChild(noteCard);
+            });
+        }
+
+        // Yeni Not Ekleme Fonksiyonu
+        function addNote() {
+            const title = noteTitle.value.trim();
+            const content = noteContent.value.trim();
+
+            if (!content) {
+                alert('Lütfen bir not içeriği giriniz!');
+                return;
+            }
+
+            // Yeni not objesi oluştur
+            const newNote = {
+                title: title,
+                content: content,
+                date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+            };
+
+            // Notu listeye (Array) ekle
+            notes.unshift(newNote);
+
+            // Güncel listeyi LocalStorage'a kaydet
+            localStorage.setItem('staj_notlari', JSON.stringify(notes));
+
+            // Formu temizle
+            noteTitle.value = '';
+            noteContent.value = '';
+
+            // Arayüzü yenile
+            renderNotes();
+        }
+
+        // Not Silme Fonksiyonu
+        function deleteNote(index) {
+            if (confirm('Bu notu silmek istediğinize emin misiniz?')) {
+                // Seçilen indeksteki elemanı diziden çıkar
+                notes.splice(index, 1);
+                // Depoyu güncelle
+                localStorage.setItem('staj_notlari', JSON.stringify(notes));
+                // Arayüzü yenile
+                renderNotes();
+            }
+        }
+
+        // Event Listeners (Olay İzleyiciler)
+        addNoteBtn.addEventListener('click', addNote);
+
+        // İlk açılışta notları yükle
+        renderNotes();
+    </script>
+</body>
+</html>
